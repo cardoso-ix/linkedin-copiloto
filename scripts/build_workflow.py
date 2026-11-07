@@ -183,7 +183,9 @@ if (cmd === 'conectar') {
   const url = 'https://www.linkedin.com/oauth/v2/authorization?response_type=code' +
     '&client_id=' + encodeURIComponent($env.LINKEDIN_CLIENT_ID) +
     '&redirect_uri=' + encodeURIComponent(LI_REDIRECT) +
-    '&state=' + state + '&scope=' + encodeURIComponent($env.LINKEDIN_SCOPES || __LI_SCOPES__);
+    '&state=' + state + '&scope=' +
+    // '+' no lugar de %20: o Telegram Desktop no Windows decodifica %20 e o navegador quebra o link nos espacos
+    encodeURIComponent($env.LINKEDIN_SCOPES || __LI_SCOPES__).replace(/%20/g, '+');
   return simples('Toca no botao, entra no LinkedIn e autoriza o app. O link vale 15 minutos. ' +
     'O acesso dura 60 dias; eu te aviso antes de vencer.',
     { inline_keyboard: [[{ text: 'Conectar LinkedIn', url }]] });
