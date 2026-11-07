@@ -1,13 +1,13 @@
 # Copiloto LinkedIn: n8n + Postgres, deployado pelo Coolify.
-# As variaveis SERVICE_* sao geradas pelo Coolify (dominio, usuario, senhas).
+# Coolify 4.6: SERVICE_URL_* traz https://, SERVICE_FQDN_* so o host. Variaveis geradas pelo Coolify.
 services:
   n8n:
     image: docker.n8n.io/n8nio/n8n:stable
     environment:
       - SERVICE_FQDN_N8N_5678
-      - N8N_EDITOR_BASE_URL=${SERVICE_FQDN_N8N}
-      - WEBHOOK_URL=${SERVICE_FQDN_N8N}
-      - N8N_HOST=${SERVICE_URL_N8N}
+      - N8N_EDITOR_BASE_URL=${SERVICE_URL_N8N}
+      - WEBHOOK_URL=${SERVICE_URL_N8N}
+      - N8N_HOST=${SERVICE_FQDN_N8N}
       - N8N_PROTOCOL=https
       - GENERIC_TIMEZONE=America/Sao_Paulo
       - TZ=America/Sao_Paulo
@@ -24,7 +24,14 @@ services:
       - DB_POSTGRESDB_USER=${SERVICE_USER_POSTGRES}
       - DB_POSTGRESDB_PASSWORD=${SERVICE_PASSWORD_POSTGRES}
       - DB_POSTGRESDB_SCHEMA=public
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+      # Segredos da aplicacao: valores so nas variaveis do Coolify
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TG_WEBHOOK_SECRET=${TG_WEBHOOK_SECRET}
+      - LLM_API_KEY=${LLM_API_KEY}
+      - LLM_BASE_URL=${LLM_BASE_URL}
+      - LLM_MODEL=${LLM_MODEL}
     volumes:
       - n8n-data:/home/node/.n8n
     depends_on:

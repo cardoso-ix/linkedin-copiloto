@@ -23,7 +23,7 @@ n8n (Coolify, HTTPS) ── DeepSeek API (textos, score de vagas)
 | Módulo | Status |
 |--------|--------|
 | Infra (n8n + Postgres no Coolify, HTTPS) | no ar |
-| Núcleo Telegram + DeepSeek | em construção |
+| Bot Telegram: /post e comentários sugeridos (DeepSeek via OpenCode Go) | no ar |
 | Publicação via API oficial | planejado |
 | Radar de vagas remotas + pipeline | planejado |
 | Engajamento assistido + relatório semanal | planejado |
@@ -42,3 +42,11 @@ docs/                setup e decisões
 ## Segurança
 
 Nenhum token, chave ou cookie fica neste repositório. Credenciais vivem nas variáveis do Coolify e no cofre de credenciais do n8n.
+
+## Deploy do workflow
+
+```bash
+python scripts/build_workflow.py   # gera workflows/telegram-bot.json a partir de prompts/
+```
+
+Importar no container: `n8n import:workflow --input=telegram-bot.json`, depois `n8n publish:workflow --id=copilotoTelegram01` e reiniciar o n8n. O webhook do Telegram aponta para `/webhook/telegram-copiloto` com `secret_token` (variável `TG_WEBHOOK_SECRET`).

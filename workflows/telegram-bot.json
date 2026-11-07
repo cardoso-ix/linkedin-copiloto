@@ -1,0 +1,246 @@
+{
+  "id": "copilotoTelegram01",
+  "name": "Copiloto · Bot Telegram",
+  "active": false,
+  "nodes": [
+    {
+      "id": "n-webhook",
+      "name": "Telegram Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        300
+      ],
+      "webhookId": "6f0c7a52-1d1e-4b8e-9a39-0c0b1a7e0001",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "telegram-copiloto",
+        "responseMode": "onReceived",
+        "options": {}
+      }
+    },
+    {
+      "id": "n-roteador",
+      "name": "Roteador",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "jsCode": "\nconst SISTEMA = \"Você escreve em nome de Eduardo Cardoso, em português do Brasil.\\n\\nQUEM É O EDUARDO (use só estes fatos, nunca invente outros):\\n- Mora em Chapecó/SC. Experiência real em suporte técnico (Help Desk) e em automação de processos com n8n, APIs e LLMs.\\n- Faz pós-graduação em IA, com foco em agentes.\\n- Projetos reais: Mentor de Gestão Industrial (multiagente com CrewAI, RAG com ChromaDB, Streamlit, demo no Hugging Face); replicador de promoções de Pokémon TCG para WhatsApp (Node.js/TypeScript, rodando 24/7 numa VPS com Coolify e painel próprio); PC Dashboard (app desktop em Tauri/Rust); conversor de unidades (React/TypeScript); este próprio copiloto de LinkedIn em n8n.\\n- Busca trabalho remoto em automação/IA, suporte técnico ou suporte a produto de IA. Nunca escreva \\\"busco vaga\\\", \\\"open to work\\\" ou similar no texto.\\n\\nVOZ:\\n- Pragmático, de colega para colega. Direto, técnico sem ser pedante, honesto sobre erros e limites.\\n- Nada de palco, motivacional ou autopromoção vazia.\\n\\nPROIBIDO:\\n- Travessão longo (—) ou meia-risca (–). Use vírgula, ponto ou parênteses.\\n- Mais de 1 emoji no texto inteiro. Emojis 🚀🔥💡👏📌👇🎯 nunca.\\n- Listas com marcadores transformando o texto em slide. Prefira parágrafos curtos.\\n- Aberturas clichê: \\\"No mundo acelerado...\\\", \\\"Você já parou para pensar...\\\", \\\"Recentemente me deparei...\\\", \\\"No cenário atual...\\\".\\n- Fechamentos pedindo engajamento: \\\"E você, o que acha? Comenta aí\\\", \\\"Compartilhe\\\", \\\"Salve este post\\\".\\n- Palavras: disruptivo, mindset, ecossistema, revolucionar, game changer, sinergia, fora da caixa, jornada.\\n- Números, clientes, resultados ou experiências que não estejam nos fatos acima ou na ideia enviada.\\n\";\nconst P_POST = \"Escreva duas versões de post para o LinkedIn a partir da ideia abaixo.\\n\\nVersão 1 (Bastidores): narrativa curta de algo que aconteceu na prática, a dor real e o que ele aprendeu.\\nVersão 2 (Arquitetura): foco técnico, comparando o jeito frágil com o jeito robusto de resolver.\\n\\nRegras de formato para as duas:\\n- 900 a 1.500 caracteres.\\n- Primeira linha é um gancho seco, uma afirmação forte ou o problema direto.\\n- Parágrafos de 1 a 3 linhas separados por linha em branco (leitura no celular).\\n- Termina com uma constatação honesta de engenharia ou uma pergunta natural entre profissionais, sem pedir engajamento.\\n- No máximo 3 hashtags no final, relevantes (ex.: #n8n #automacao #IA).\\n\\nTambém gere um prompt de imagem em inglês técnico para o Meta AI: infográfico ou diagrama em dark mode (#0f172a), 16:9, com todos os textos da imagem em português entre aspas, sem robôs, sem vidro 3D, sem esferas brilhantes, sem textos em inglês.\\n\\nResponda SOMENTE com JSON válido neste formato:\\n{\\\"v1\\\": \\\"texto da versão 1\\\", \\\"v2\\\": \\\"texto da versão 2\\\", \\\"imagem\\\": \\\"prompt da imagem\\\"}\\n\\nIDEIA:\\n\";\nconst P_COMENT = \"Abaixo está o texto de um post do LinkedIn de outra pessoa. Escreva dois comentários que o Eduardo poderia publicar nele.\\n\\nComentário 1: acrescenta um ponto técnico ou prático que o post não disse, ligado à experiência real dele quando fizer sentido.\\nComentário 2: faz uma pergunta específica e inteligente sobre o conteúdo, que puxe conversa com o autor.\\n\\nRegras:\\n- 2 a 4 frases cada. Nada de \\\"Ótimo post!\\\", \\\"Parabéns pela reflexão\\\", \\\"Concordo totalmente\\\".\\n- Não elogie o autor de forma genérica, não se promova, não peça conexão.\\n- Escreva no mesmo idioma do post.\\n- Se o post for vago demais para comentar algo útil, diga isso no campo \\\"aviso\\\" e ainda assim sugira os comentários.\\n\\nResponda SOMENTE com JSON válido neste formato:\\n{\\\"c1\\\": \\\"comentário 1\\\", \\\"c2\\\": \\\"comentário 2\\\", \\\"aviso\\\": \\\"\\\"}\\n\\nPOST:\\n\";\nconst AJUDA = \"Copiloto LinkedIn\\n\\n/post <ideia>  gera 2 versoes de post (Bastidores e Arquitetura) + prompt de imagem\\n/comentar <texto do post>  sugere 2 comentarios\\nColar o texto de um post (sem comando) tambem gera comentarios.\\n/status  confere se esta tudo de pe\\n/menu  mostra esta ajuda\\n\\nNada e publicado sozinho: voce copia, ajusta e posta.\";\n\nconst input = $input.first().json;\nconst headers = input.headers || {};\nconst body = input.body || {};\n\nconst secret = $env.TG_WEBHOOK_SECRET;\nif (secret && headers['x-telegram-bot-api-secret-token'] !== secret) return [];\n\nconst msg = body.message || body.edited_message;\nif (!msg || !msg.chat) return [];\nconst chatId = String(msg.chat.id);\nif (chatId !== String($env.TELEGRAM_CHAT_ID)) return [];\n\nconst text = (msg.text || msg.caption || '').trim();\nif (!text) {\n  return [{ json: { chatId, needsLlm: false, reply: 'Por enquanto eu so entendo texto. Manda /menu para ver os comandos.' } }];\n}\n\nconst m = text.match(/^\\/(\\w+)(?:@\\w+)?\\s*([\\s\\S]*)$/);\nconst cmd = m ? m[1].toLowerCase() : null;\nconst arg = m ? m[2].trim() : text;\n\nfunction llm(kind, userContent) {\n  return {\n    chatId,\n    needsLlm: true,\n    kind,\n    session: 'copiloto-' + chatId + '-' + kind,\n    ack: kind === 'post' ? 'Escrevendo 2 versoes do post...' : 'Lendo o post e pensando nos comentarios...',\n    llmBody: {\n      model: $env.LLM_MODEL || 'deepseek-v4.1-flash',\n      temperature: 0.8,\n      max_tokens: 3000,\n      response_format: { type: 'json_object' },\n      messages: [\n        { role: 'system', content: SISTEMA },\n        { role: 'user', content: userContent },\n      ],\n    },\n  };\n}\n\nif (cmd === 'start' || cmd === 'menu' || cmd === 'ajuda' || cmd === 'help') {\n  return [{ json: { chatId, needsLlm: false, reply: AJUDA } }];\n}\nif (cmd === 'status') {\n  const agora = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });\n  return [{ json: { chatId, needsLlm: false, reply: 'No ar.\\nModelo: ' + ($env.LLM_MODEL || '?') + '\\nHora do servidor: ' + agora } }];\n}\nif (cmd === 'post') {\n  if (!arg) return [{ json: { chatId, needsLlm: false, reply: 'Manda a ideia junto. Ex.: /post o dia em que meu agente de IA estourou o limite da API e como eu resolvi com fila' } }];\n  return [{ json: llm('post', P_POST + arg) }];\n}\nif (cmd === 'comentar') {\n  if (!arg) return [{ json: { chatId, needsLlm: false, reply: 'Cola o texto do post depois do comando, ou so cola o texto direto sem comando.' } }];\n  return [{ json: llm('comentario', P_COMENT + arg) }];\n}\nif (cmd) {\n  return [{ json: { chatId, needsLlm: false, reply: 'Comando desconhecido. /menu mostra o que eu sei fazer.' } }];\n}\nif (/linkedin\\.com|lnkd\\.in/i.test(text) && text.length < 300) {\n  return [{ json: { chatId, needsLlm: false, reply: 'Eu nao abro links do LinkedIn (para proteger sua conta). Copia o texto do post no app e cola aqui.' } }];\n}\nif (text.length < 40) {\n  return [{ json: { chatId, needsLlm: false, reply: 'Nao entendi. Para comentar um post, cola o texto inteiro dele. /menu mostra os comandos.' } }];\n}\nreturn [{ json: llm('comentario', P_COMENT + text) }];\n"
+      }
+    },
+    {
+      "id": "n-if",
+      "name": "Precisa de IA?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.needsLlm }}",
+              "value2": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "n-ack",
+      "name": "Aviso processando",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        180
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chat_id: $json.chatId, text: $json.ack, disable_web_page_preview: true }) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "n-llm",
+      "name": "LLM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        180
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.LLM_BASE_URL }}/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.LLM_API_KEY }}"
+            },
+            {
+              "name": "User-Agent",
+              "value": "copiloto-linkedin/0.1"
+            },
+            {
+              "name": "x-opencode-session",
+              "value": "={{ $('Roteador').first().json.session }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($('Roteador').first().json.llmBody) }}",
+        "options": {
+          "timeout": 180000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "n-formatar",
+      "name": "Formatar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        180
+      ],
+      "parameters": {
+        "jsCode": "\nconst ctx = $('Roteador').first().json;\nconst resp = $input.first().json;\nconst chatId = ctx.chatId;\n\nfunction limpa(s) {\n  return String(s || '')\n    .replace(/\\s*[—–]\\s*/g, ', ')\n    .replace(/, ,/g, ',')\n    .trim();\n}\n\nlet raw = '';\ntry { raw = resp.choices[0].message.content || ''; } catch (e) { raw = ''; }\nif (!raw) {\n  const erro = resp.error ? (resp.error.message || JSON.stringify(resp.error)) : 'resposta vazia';\n  return [{ json: { chatId, text: 'A IA nao respondeu: ' + erro } }];\n}\n\nlet data;\ntry {\n  data = JSON.parse(raw.replace(/^```(?:json)?\\s*/i, '').replace(/```\\s*$/, ''));\n} catch (e) {\n  return [{ json: { chatId, text: 'Resposta fora do formato, segue crua:\\n\\n' + limpa(raw).slice(0, 3800) } }];\n}\n\nconst out = [];\nif (ctx.kind === 'post') {\n  const v1 = limpa(data.v1), v2 = limpa(data.v2);\n  out.push({ json: { chatId, text: 'VERSAO 1 · Bastidores (' + v1.length + ' caracteres)\\n\\n' + v1 } });\n  out.push({ json: { chatId, text: 'VERSAO 2 · Arquitetura (' + v2.length + ' caracteres)\\n\\n' + v2 } });\n  if (data.imagem) out.push({ json: { chatId, text: 'Prompt de imagem (Meta AI):\\n\\n' + String(data.imagem).trim() } });\n} else {\n  if (data.aviso) out.push({ json: { chatId, text: 'Aviso: ' + limpa(data.aviso) } });\n  out.push({ json: { chatId, text: 'COMENTARIO 1\\n\\n' + limpa(data.c1) } });\n  out.push({ json: { chatId, text: 'COMENTARIO 2\\n\\n' + limpa(data.c2) } });\n}\nreturn out;\n"
+      }
+    },
+    {
+      "id": "n-send-llm",
+      "name": "Enviar resultado",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1440,
+        180
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chat_id: $json.chatId, text: $json.text, disable_web_page_preview: true }) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "n-send-simple",
+      "name": "Responder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        420
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chat_id: $json.chatId, text: $json.reply, disable_web_page_preview: true }) }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Telegram Webhook": {
+      "main": [
+        [
+          {
+            "node": "Roteador",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Roteador": {
+      "main": [
+        [
+          {
+            "node": "Precisa de IA?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Precisa de IA?": {
+      "main": [
+        [
+          {
+            "node": "Aviso processando",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aviso processando": {
+      "main": [
+        [
+          {
+            "node": "LLM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM": {
+      "main": [
+        [
+          {
+            "node": "Formatar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatar": {
+      "main": [
+        [
+          {
+            "node": "Enviar resultado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Sao_Paulo"
+  },
+  "pinData": {}
+}
