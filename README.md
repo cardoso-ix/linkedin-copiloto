@@ -32,12 +32,19 @@ n8n (Coolify, HTTPS) ── DeepSeek API (textos, score de vagas)
 
 ```
 docker-compose.yml   n8n + Postgres (variáveis SERVICE_* geradas pelo Coolify)
-CONTEXT.md           voz, persona e regras editoriais
-prompts/             prompts versionados
+prompts/             voz, persona, regras editoriais e prompts versionados
 workflows/           export dos workflows n8n (sem credenciais)
-db/schema.sql        tabelas da aplicação
-docs/                setup e decisões
+scripts/             build do workflow a partir dos prompts e comando de deploy
+docs/adr/            decisões de arquitetura
 ```
+
+## Problemas reais que apareceram (e como resolvi)
+
+- **Deploy apagava o estado.** Importar o workflow sobrescrevia o `staticData` e derrubava a conexão com o LinkedIn. O build passava; só o teste de ponta a ponta mostrou. Agora o deploy exporta o estado atual e mescla antes de importar.
+- **Link OAuth quebrado no Telegram Desktop.** O `%20` entre os escopos era decodificado e o navegador abria abas soltas. Trocar por `+` resolveu.
+- **JSON cortado da IA.** Em respostas longas o modelo devolvia JSON incompleto. Um parser tolerante recupera cada campo, e o limite de tokens subiu.
+- **OAuth recusado.** "Include valid openId scopes like profile, email": faltava o escopo `email`.
+- **Menu do bot com ~60 comandos de outro programa.** Estavam em outros escopos e idiomas do Telegram; limpei com `deleteMyCommands` em cada um.
 
 ## Segurança
 
