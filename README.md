@@ -49,4 +49,4 @@ Nenhum token, chave ou cookie fica neste repositório. Credenciais vivem nas var
 python scripts/build_workflow.py   # gera workflows/telegram-bot.json a partir de prompts/
 ```
 
-Importar no container: `n8n import:workflow --input=telegram-bot.json`, depois `n8n publish:workflow --id=copilotoTelegram01` e reiniciar o n8n. O webhook do Telegram aponta para `/webhook/telegram-copiloto` com `secret_token` (variável `TG_WEBHOOK_SECRET`).
+Gerar o comando com `python scripts/deploy_cmd.py > cmd.txt` e colar no terminal da VPS (Coolify > Terminal). Ele exporta o workflow em execução, copia o `staticData` (conexão do LinkedIn, rascunhos, vagas vistas) para o JSON novo e só então roda `n8n import:workflow`, `n8n publish:workflow --id=copilotoTelegram01` e reinicia o n8n. Importar o JSON do repositório direto apaga esses dados. O webhook do Telegram aponta para `/webhook/telegram-copiloto` com `secret_token` (variável `TG_WEBHOOK_SECRET`).
