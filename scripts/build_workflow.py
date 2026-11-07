@@ -210,9 +210,10 @@ if (foto) {
   const d = sd.drafts[id];
   if (d.publicado) return simples('Esse rascunho ja foi publicado: ' + d.publicado);
   d.img = foto;
-  const previa = String(d.v1 || '').slice(0, 140) + (String(d.v1 || '').length > 140 ? '...' : '');
-  return simples('Imagem anexada ao rascunho que comeca assim:\n\n' + previa +
-    '\n\nEscolhe a versao para publicar com a imagem.', botoesDraft(id));
+  const gancho = (t) => { const l = String(t || '').split('\n')[0]; return l.length > 160 ? l.slice(0, 160) + '...' : l; };
+  return simples('Imagem recebida e anexada ao ultimo post.\n\nVersao 1: ' + gancho(d.v1) +
+    (d.v2 ? '\nVersao 2: ' + gancho(d.v2) : '') +
+    '\n\nToca na versao que quer publicar com a imagem.', botoesDraft(id));
 }
 
 const text = (msg.text || msg.caption || '').trim();
@@ -339,10 +340,13 @@ if (ctx.kind === 'post') {
   const botao = (n) => ({ inline_keyboard: [[{ text: 'Publicar versao ' + n + (comImg ? ' com imagem' : ''), callback_data: 'p' + n + ':' + id }]] });
   add('VERSAO 1 · Bastidores (' + v1.length + ' caracteres)\n\n' + v1, botao(1));
   if (v2) add('VERSAO 2 · Arquitetura (' + v2.length + ' caracteres)\n\n' + v2, botao(2));
-  add('Quer ajustar antes? Copia, edita e manda /publicar <texto editado>. Se tiver [colchetes], complete antes de publicar.');
-  if (comImg) add('A imagem que voce mandou vai junto com a versao que voce publicar.');
-  else if (data.imagem) add('Prompt de imagem (cola no Gemini ou no Meta AI):\n\n' + String(data.imagem).trim() +
-    '\n\nPara publicar com imagem: gera a imagem, depois responde a versao escolhida mandando a foto.');
+  if (comImg) add('A imagem que voce mandou ja esta anexada. Toca em Publicar na versao que preferir.');
+  else if (data.imagem) add('PROMPT DA IMAGEM (cola no Gemini ou no Meta AI)\n\n' + String(data.imagem).trim() +
+    '\n\nDepois e so mandar a imagem aqui no chat. Eu anexo neste post e os botoes passam a publicar com ela.');
+  // Rede de seguranca: a IA nao deve deixar trecho para completar, mas se deixar, avisa antes do Publicar.
+  if (/\[[^\]]{6,}\]/.test(v1 + ' ' + v2)) {
+    add('Atencao: ficou um trecho entre colchetes no texto. Gera de novo com /post antes de publicar.');
+  }
 } else if (ctx.kind === 'candidatura') {
   add('MENSAGEM PARA O RECRUTADOR\n\n' + limpa(data.nota_recrutador));
   add('O QUE DESTACAR\n' + lista(data.destaques) +

@@ -9,6 +9,8 @@ Regras de formato para as duas:
 - Parágrafos de 1 a 3 linhas separados por linha em branco (leitura no celular).
 - Termina com uma constatação honesta de engenharia ou uma pergunta natural entre profissionais, sem pedir engajamento.
 - No máximo 3 hashtags no final, relevantes (ex.: #n8n #automacao #IA).
+- Pelo menos uma das versões traz um exemplo concreto tirado dos CASOS REAIS, se algum combinar com a ideia.
+- Pronto para publicar: sem colchetes, sem trechos para completar.
 
 Também gere um prompt de imagem em inglês para o Gemini (serve também no Meta AI). Regras:
 - Formato vertical 4:5 (1080x1350), que ocupa mais espaço no feed do celular.
