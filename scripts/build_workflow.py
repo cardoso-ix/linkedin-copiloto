@@ -17,7 +17,7 @@ OUT = ROOT / "workflows" / "telegram-bot.json"
 
 WEBHOOK_PATH = "telegram-copiloto"
 LI_CALLBACK_PATH = "linkedin-callback"
-LI_SCOPES = "openid profile w_member_social"
+LI_SCOPES = "openid profile email w_member_social"
 WORKFLOW_ID = "copilotoTelegram01"
 RADAR_CRON = "0 9,15 * * *"  # 9h e 15h, horario de Sao Paulo
 RADAR_TERMOS = [
@@ -183,7 +183,7 @@ if (cmd === 'conectar') {
   const url = 'https://www.linkedin.com/oauth/v2/authorization?response_type=code' +
     '&client_id=' + encodeURIComponent($env.LINKEDIN_CLIENT_ID) +
     '&redirect_uri=' + encodeURIComponent(LI_REDIRECT) +
-    '&state=' + state + '&scope=' + encodeURIComponent(__LI_SCOPES__);
+    '&state=' + state + '&scope=' + encodeURIComponent($env.LINKEDIN_SCOPES || __LI_SCOPES__);
   return simples('Toca no botao, entra no LinkedIn e autoriza o app. O link vale 15 minutos. ' +
     'O acesso dura 60 dias; eu te aviso antes de vencer.',
     { inline_keyboard: [[{ text: 'Conectar LinkedIn', url }]] });
