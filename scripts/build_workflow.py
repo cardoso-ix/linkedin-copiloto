@@ -112,7 +112,7 @@ const novoDraft = (campos) => {
 const llm = (kind, ack, userContent, temperature = 0.8) => [{ json: {
   chatId, route: 'llm', kind, ack,
   session: 'copiloto-' + chatId + '-' + kind,
-  llmBody: llmBody(userContent, temperature, 3000),
+  llmBody: llmBody(userContent, temperature, 8000),
 } }];
 
 if (cq) {
@@ -238,17 +238,35 @@ if (!raw) {
   const erro = resp.error ? (resp.error.message || JSON.stringify(resp.error)) : 'resposta vazia';
   return [{ json: { chatId, text: 'A IA nao respondeu: ' + erro } }];
 }
-let data;
+const limpo = raw.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '');
+// JSON quebrado ou cortado: recupera cada campo de texto pelo nome, mesmo sem aspas de fechamento.
+function campo(nome) {
+  const m = limpo.match(new RegExp('"' + nome + '"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)'));
+  if (!m) return null;
+  try { return JSON.parse('"' + m[1].replace(/\\$/, '') + '"'); }
+  catch (e) { return m[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\\\/g, '\\'); }
+}
+function campoLista(nome) {
+  const m = limpo.match(new RegExp('"' + nome + '"\\s*:\\s*\\[([\\s\\S]*?)(\\]|$)'));
+  if (!m) return [];
+  return (m[1].match(/"((?:[^"\\]|\\.)*)"/g) || []).map((s) => { try { return JSON.parse(s); } catch (e) { return s; } });
+}
+let data, cortado = false;
 try {
-  data = JSON.parse(raw.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, ''));
+  data = JSON.parse(limpo);
 } catch (e) {
-  return [{ json: { chatId, text: 'Resposta fora do formato, segue crua:\n\n' + limpa(raw).slice(0, 3800) } }];
+  cortado = true;
+  data = { v1: campo('v1'), v2: campo('v2'), imagem: campo('imagem'), c1: campo('c1'), c2: campo('c2'), aviso: campo('aviso'),
+    nota_recrutador: campo('nota_recrutador'), destaques: campoLista("destaques"), lacunas: campoLista("lacunas"), palavras_chave: campoLista("palavras_chave") };
+  const algo = ctx.kind === 'post' ? data.v1 : (ctx.kind === 'candidatura' ? data.nota_recrutador : data.c1);
+  if (!algo) return [{ json: { chatId, text: 'A IA respondeu fora do formato. Tenta de novo em instantes.' } }];
 }
 
 const out = [];
 const add = (text, reply_markup) => out.push({ json: { chatId, text, reply_markup } });
 if (ctx.kind === 'post') {
   const v1 = limpa(data.v1), v2 = limpa(data.v2);
+  if (cortado) add('A resposta da IA veio cortada; recuperei o que deu. Confere o final do texto antes de publicar.');
   const sd = $getWorkflowStaticData('global');
   sd.drafts = sd.drafts || {};
   const id = Date.now().toString(36);
@@ -257,7 +275,7 @@ if (ctx.kind === 'post') {
   for (const velho of ids.slice(30)) delete sd.drafts[velho];
   const botao = (n) => ({ inline_keyboard: [[{ text: 'Publicar versao ' + n, callback_data: 'p' + n + ':' + id }]] });
   add('VERSAO 1 · Bastidores (' + v1.length + ' caracteres)\n\n' + v1, botao(1));
-  add('VERSAO 2 · Arquitetura (' + v2.length + ' caracteres)\n\n' + v2, botao(2));
+  if (v2) add('VERSAO 2 · Arquitetura (' + v2.length + ' caracteres)\n\n' + v2, botao(2));
   add('Quer ajustar antes? Copia, edita e manda /publicar <texto editado>. Se tiver [colchetes], complete antes de publicar.');
   if (data.imagem) add('Prompt de imagem (Meta AI):\n\n' + String(data.imagem).trim());
 } else if (ctx.kind === 'candidatura') {
