@@ -13,7 +13,7 @@ Telegram (whitelist por chat_id)
 n8n (Coolify, HTTPS) ── DeepSeek API (textos, score de vagas)
    │       │        └── Postgres (fila de posts, vagas, pipeline, métricas)
    │       ├── LinkedIn API oficial (publica após aprovação)
-   │       ├── Gupy / Remotar + alertas de vaga no Gmail
+   │       ├── Remotar (API pública de vagas remotas)
    │       └── GitHub API (commits viram pautas)
    └── Error workflow → alerta no Telegram
 ```
@@ -25,7 +25,7 @@ n8n (Coolify, HTTPS) ── DeepSeek API (textos, score de vagas)
 | Infra (n8n + Postgres no Coolify, HTTPS) | no ar |
 | Bot Telegram: /post e comentários sugeridos (DeepSeek via OpenCode Go) | no ar |
 | Publicação via API oficial | planejado |
-| Radar de vagas remotas + pipeline | planejado |
+| Radar de vagas remotas (Remotar, 9h e 15h, nota por IA) + botões Quero/Ignorar + /pipeline | no ar |
 | Engajamento assistido + relatório semanal | planejado |
 
 ## Estrutura

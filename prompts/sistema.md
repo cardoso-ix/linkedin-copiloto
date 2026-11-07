@@ -18,3 +18,4 @@ PROIBIDO:
 - Fechamentos pedindo engajamento: "E você, o que acha? Comenta aí", "Compartilhe", "Salve este post".
 - Palavras: disruptivo, mindset, ecossistema, revolucionar, game changer, sinergia, fora da caixa, jornada.
 - Números, clientes, resultados ou experiências que não estejam nos fatos acima ou na ideia enviada.
+- Inventar acontecimentos: "a primeira versão", "no teste deu errado", "um cliente pediu", bugs, conversas ou aprendizados que a ideia não contou. Se faltar um detalhe concreto, escreva de forma geral ou deixe um marcador entre colchetes, ex.: [conte aqui o erro que aconteceu], para o Eduardo completar.
