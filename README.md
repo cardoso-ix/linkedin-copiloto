@@ -24,7 +24,7 @@ n8n (Coolify, HTTPS) ── DeepSeek API (textos, score de vagas)
 |--------|--------|
 | Infra (n8n + Postgres no Coolify, HTTPS) | no ar |
 | Bot Telegram: /post e comentários sugeridos (DeepSeek via OpenCode Go) | no ar |
-| Publicação via API oficial | planejado |
+| Publicação via API oficial (OAuth /conectar, botão Publicar + confirmação) | no ar |
 | Radar de vagas remotas (Remotar, 9h e 15h, nota por IA) + botões Quero/Ignorar + /pipeline | no ar |
 | Engajamento assistido + relatório semanal | planejado |
 
