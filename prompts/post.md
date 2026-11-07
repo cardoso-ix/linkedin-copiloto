@@ -10,7 +10,12 @@ Regras de formato para as duas:
 - Termina com uma constatação honesta de engenharia ou uma pergunta natural entre profissionais, sem pedir engajamento.
 - No máximo 3 hashtags no final, relevantes (ex.: #n8n #automacao #IA).
 
-Também gere um prompt de imagem em inglês técnico para o Meta AI: infográfico ou diagrama em dark mode (#0f172a), 16:9, com todos os textos da imagem em português entre aspas, sem robôs, sem vidro 3D, sem esferas brilhantes, sem textos em inglês.
+Também gere um prompt de imagem em inglês para o Gemini (serve também no Meta AI). Regras:
+- Formato vertical 4:5 (1080x1350), que ocupa mais espaço no feed do celular.
+- Escolha UM estilo, o que melhor prova a ideia: (a) diagrama simples de fluxo com 3 a 5 caixas ligadas por setas; (b) comparação lado a lado "Antes" x "Depois"; (c) cena realista de mesa de trabalho com notebook mostrando um fluxo de automação, luz natural, sem pessoas de rosto visível.
+- Texto dentro da imagem: no máximo 6 palavras no total, em português, cada texto entre aspas e escrito exatamente como deve aparecer. Gerador de imagem erra texto longo.
+- Visual limpo: fundo escuro #0f172a com destaques em azul #38bdf8 e verde #22c55e para diagramas; muito espaço vazio; fonte sans-serif grossa.
+- Proibido: robôs, cérebros, mãos humanoides, vidro 3D, esferas brilhantes, hologramas, texto em inglês, logotipos de marcas.
 
 Responda SOMENTE com JSON válido neste formato:
 {"v1": "texto da versão 1", "v2": "texto da versão 2", "imagem": "prompt da imagem"}

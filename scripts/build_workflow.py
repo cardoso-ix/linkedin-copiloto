@@ -42,6 +42,7 @@ AJUDA = """Copiloto LinkedIn
 
 /post <ideia>  gera 2 versoes de post + prompt de imagem
 /publicar <texto>  publica um texto seu (pede confirmacao)
+Imagem: responde a versao escolhida com a foto, ou manda a foto com /post <ideia> na legenda
 /conectar  liga (ou renova) sua conta do LinkedIn
 /comentar <texto do post>  sugere 2 comentarios (ou so cola o texto)
 /vagas  roda o radar de vagas remotas agora
@@ -100,7 +101,8 @@ sd.drafts = sd.drafts || {};
 const little = (s) => String(s).replace(/[\\|{}@\[\]()<>*_~]/g, (m) => '\\' + m)
   .replace(/#(?![\p{L}\p{N}_])/gu, '\\#');
 const confirmar = (id, n, texto) => simples(
-  'Publicar no seu perfil, visivel para todos? Depois so apagando no app.\n\n' + texto,
+  'Publicar no seu perfil, visivel para todos? Depois so apagando no app.' +
+  ((sd.drafts[id] || {}).img ? '\nVai junto a imagem que voce mandou.' : '') + '\n\n' + texto,
   { inline_keyboard: [[{ text: 'Sim, publicar', callback_data: 'c' + n + ':' + id }, { text: 'Cancelar', callback_data: 'n:' + id }]] });
 const novoDraft = (campos) => {
   const id = Date.now().toString(36);
@@ -108,6 +110,15 @@ const novoDraft = (campos) => {
   const ids = Object.keys(sd.drafts).sort((a, b) => sd.drafts[b].at - sd.drafts[a].at);
   for (const velho of ids.slice(30)) delete sd.drafts[velho];
   return id;
+};
+// Botoes de um rascunho: uma linha por versao, e "Tirar imagem" quando tiver imagem.
+const botoesDraft = (id) => {
+  const d = sd.drafts[id];
+  const tag = d.img ? ' com imagem' : '';
+  const kb = [[{ text: 'Publicar versao 1' + tag, callback_data: 'p1:' + id }]];
+  if (d.v2) kb.push([{ text: 'Publicar versao 2' + tag, callback_data: 'p2:' + id }]);
+  if (d.img) kb.push([{ text: 'Tirar imagem', callback_data: 'r:' + id }]);
+  return { inline_keyboard: kb };
 };
 const llm = (kind, ack, userContent, temperature = 0.8) => [{ json: {
   chatId, route: 'llm', kind, ack,
@@ -117,10 +128,14 @@ const llm = (kind, ack, userContent, temperature = 0.8) => [{ json: {
 
 if (cq) {
   const [tipo, id] = String(cq.data || '').split(':');
-  if (/^[pcn]\d?$/.test(tipo)) {
+  if (/^[pcnr]\d?$/.test(tipo)) {
     const d = sd.drafts[id];
     if (!d) return simples('Esse rascunho saiu da memoria. Gera de novo com /post ou manda /publicar <texto>.');
     if (tipo === 'n') return simples('Ok, nao publiquei.');
+    if (tipo === 'r') {
+      delete d.img;
+      return simples('Imagem removida. O post sai so com texto.', botoesDraft(id));
+    }
     const n = tipo.slice(1) || '1';
     const texto = d['v' + n];
     if (!texto) return [];
@@ -132,7 +147,7 @@ if (cq) {
     if (d.publicando && Date.now() - d.publicando < 120000) return simples('Ja estou publicando esse, espera um pouco.');
     d.publicando = Date.now();
     return [{ json: {
-      chatId, route: 'publicar', draftId: id, token: li.token,
+      chatId, route: 'publicar', draftId: id, token: li.token, img: d.img || null,
       liBody: {
         author: 'urn:li:person:' + li.sub,
         commentary: little(texto),
@@ -156,6 +171,48 @@ if (cq) {
     return llm('candidatura', 'Anotado no pipeline. Preparando mensagem para o recrutador...', P_CAND + vaga, 0.6);
   }
   return [];
+}
+
+// Imagem: foto comprimida (maior resolucao e a ultima) ou arquivo JPG/PNG/GIF.
+const foto = (msg.photo && msg.photo.length) ? msg.photo[msg.photo.length - 1].file_id
+  : (msg.document && /^image\/(jpeg|png|gif)$/i.test(msg.document.mime_type || '') ? msg.document.file_id : null);
+if (msg.document && !foto) return simples('Esse tipo de arquivo eu nao uso. Imagem precisa ser JPG, PNG ou GIF.');
+if (foto) {
+  const leg = (msg.caption || '').trim();
+  const mc = leg.match(/^\/(\w+)(?:@\w+)?\s*([\s\S]*)$/);
+  const ccmd = mc ? mc[1].toLowerCase() : null;
+  const carg = mc ? mc[2].trim() : '';
+  if (ccmd === 'post') {
+    if (!carg) return simples('Coloca a ideia na legenda da foto: /post <ideia>.');
+    sd.imgPendente = { img: foto, at: Date.now() };
+    return llm('post', 'Escrevendo 2 versoes do post (a imagem vai junto)...', P_POST + carg);
+  }
+  if (ccmd === 'publicar') {
+    if (!carg) return simples('Coloca o texto na legenda da foto: /publicar <texto do post>.');
+    if (carg.length > 3000) return simples('O LinkedIn aceita ate 3000 caracteres. Esse tem ' + carg.length + '.');
+    return confirmar(novoDraft({ v1: carg, img: foto }), '1', carg);
+  }
+  // Foto respondendo a uma mensagem com botoes de rascunho; senao, o rascunho mais recente (ate 24h).
+  let id = null;
+  const rm = msg.reply_to_message;
+  for (const row of (rm && rm.reply_markup && rm.reply_markup.inline_keyboard) || []) {
+    for (const b of row) {
+      const mm = String(b.callback_data || '').match(/^[pcr]\d?:(\w+)$/);
+      if (mm && sd.drafts[mm[1]]) id = mm[1];
+    }
+  }
+  if (!id) {
+    const recentes = Object.keys(sd.drafts).filter((k) => !sd.drafts[k].publicado)
+      .sort((a, b) => sd.drafts[b].at - sd.drafts[a].at);
+    if (recentes.length && Date.now() - sd.drafts[recentes[0]].at < 24 * 3600000) id = recentes[0];
+  }
+  if (!id) return simples('Recebi a imagem, mas nao achei rascunho para ela. Manda a foto com a legenda /post <ideia> ou /publicar <texto>.');
+  const d = sd.drafts[id];
+  if (d.publicado) return simples('Esse rascunho ja foi publicado: ' + d.publicado);
+  d.img = foto;
+  const previa = String(d.v1 || '').slice(0, 140) + (String(d.v1 || '').length > 140 ? '...' : '');
+  return simples('Imagem anexada ao rascunho que comeca assim:\n\n' + previa +
+    '\n\nEscolhe a versao para publicar com a imagem.', botoesDraft(id));
 }
 
 const text = (msg.text || msg.caption || '').trim();
@@ -273,13 +330,19 @@ if (ctx.kind === 'post') {
   sd.drafts = sd.drafts || {};
   const id = Date.now().toString(36);
   sd.drafts[id] = { at: Date.now(), v1, v2 };
+  const pend = sd.imgPendente;
+  if (pend && Date.now() - pend.at < 15 * 60000) sd.drafts[id].img = pend.img;
+  delete sd.imgPendente;
+  const comImg = !!sd.drafts[id].img;
   const ids = Object.keys(sd.drafts).sort((a, b) => sd.drafts[b].at - sd.drafts[a].at);
   for (const velho of ids.slice(30)) delete sd.drafts[velho];
-  const botao = (n) => ({ inline_keyboard: [[{ text: 'Publicar versao ' + n, callback_data: 'p' + n + ':' + id }]] });
+  const botao = (n) => ({ inline_keyboard: [[{ text: 'Publicar versao ' + n + (comImg ? ' com imagem' : ''), callback_data: 'p' + n + ':' + id }]] });
   add('VERSAO 1 · Bastidores (' + v1.length + ' caracteres)\n\n' + v1, botao(1));
   if (v2) add('VERSAO 2 · Arquitetura (' + v2.length + ' caracteres)\n\n' + v2, botao(2));
   add('Quer ajustar antes? Copia, edita e manda /publicar <texto editado>. Se tiver [colchetes], complete antes de publicar.');
-  if (data.imagem) add('Prompt de imagem (Meta AI):\n\n' + String(data.imagem).trim());
+  if (comImg) add('A imagem que voce mandou vai junto com a versao que voce publicar.');
+  else if (data.imagem) add('Prompt de imagem (cola no Gemini ou no Meta AI):\n\n' + String(data.imagem).trim() +
+    '\n\nPara publicar com imagem: gera a imagem, depois responde a versao escolhida mandando a foto.');
 } else if (ctx.kind === 'candidatura') {
   add('MENSAGEM PARA O RECRUTADOR\n\n' + limpa(data.nota_recrutador));
   add('O QUE DESTACAR\n' + lista(data.destaques) +
@@ -483,6 +546,30 @@ if (status === 401) motivo = 'acesso vencido ou revogado, manda /conectar. ' + m
 return [{ json: { chatId: ctx.chatId, text: 'Nao publiquei (HTTP ' + status + '): ' + String(motivo).slice(0, 500) } }];
 """
 
+LI_MONTAR_IMG = r"""
+// Depois de baixar a foto do Telegram e enviar ao LinkedIn: confere cada etapa e monta o post com a imagem.
+const ctx = $('Roteador').first().json;
+const sd = $getWorkflowStaticData('global');
+const d = (sd.drafts || {})[ctx.draftId] || {};
+const arq = $('Telegram: arquivo').first().json;
+const init = $('LinkedIn: iniciar upload').first().json;
+const put = $input.first().json;
+const falha = (motivo) => {
+  delete d.publicando;
+  return [{ json: { ok: false, chatId: ctx.chatId, text: 'Nao publiquei: ' + motivo } }];
+};
+if (!arq.ok || !arq.result || !arq.result.file_path) {
+  return falha('nao consegui pegar a imagem no Telegram (' + (arq.description || 'sem detalhe') +
+    '). O limite e 20 MB. Manda a foto de novo respondendo a versao.');
+}
+const urn = init.value && init.value.image;
+if (!urn) return falha('o LinkedIn recusou o upload da imagem (' + String(init.message || JSON.stringify(init)).slice(0, 300) + ').');
+const st = Number(put.statusCode || 0);
+if (st < 200 || st >= 300) return falha('o envio da imagem para o LinkedIn falhou (HTTP ' + st + ').');
+const liBody = Object.assign({}, ctx.liBody, { content: { media: { id: urn } } });
+return [{ json: { ok: true, chatId: ctx.chatId, token: ctx.token, liBody } }];
+"""
+
 LI_LEMBRETE = r"""
 const sd = $getWorkflowStaticData('global');
 const li = sd.li;
@@ -671,6 +758,80 @@ nodes = [
             "options": {"timeout": 30000, "response": {"response": {"fullResponse": True, "neverError": True}}},
         },
     },
+    # Post com imagem: Telegram (getFile + download) -> LinkedIn Images API -> post com content.media
+    if_bool("Tem imagem?", "n-if-img", [840, 820], "={{ !!$json.img }}"),
+    {
+        "id": "n-tg-getfile",
+        "name": "Telegram: arquivo",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [1000, 900],
+        "parameters": {
+            "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/getFile?file_id={{ encodeURIComponent($json.img) }}",
+            "options": {"timeout": 30000, "response": {"response": {"neverError": True}}},
+        },
+    },
+    {
+        "id": "n-li-img-init",
+        "name": "LinkedIn: iniciar upload",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [1160, 900],
+        "parameters": {
+            "method": "POST",
+            "url": "https://api.linkedin.com/rest/images?action=initializeUpload",
+            "sendHeaders": True,
+            "headerParameters": {
+                "parameters": [
+                    {"name": "Authorization", "value": "=Bearer {{ $('Roteador').first().json.token }}"},
+                    {"name": "LinkedIn-Version", "value": "={{ $env.LINKEDIN_VERSION || '202610' }}"},
+                    {"name": "X-Restli-Protocol-Version", "value": "2.0.0"},
+                ]
+            },
+            "sendBody": True,
+            "specifyBody": "json",
+            "jsonBody": "={{ JSON.stringify({ initializeUploadRequest: { owner: $('Roteador').first().json.liBody.author } }) }}",
+            "options": {"timeout": 30000, "response": {"response": {"neverError": True}}},
+        },
+    },
+    {
+        "id": "n-tg-download",
+        "name": "Telegram: baixar imagem",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [1320, 900],
+        "parameters": {
+            "url": "=https://api.telegram.org/file/bot{{ $env.TELEGRAM_BOT_TOKEN }}/"
+                   "{{ ($('Telegram: arquivo').first().json.result || {}).file_path || 'sem-arquivo' }}",
+            "options": {
+                "timeout": 60000,
+                "response": {"response": {"neverError": True, "responseFormat": "file", "outputPropertyName": "data"}},
+            },
+        },
+    },
+    {
+        "id": "n-li-img-put",
+        "name": "LinkedIn: enviar imagem",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [1480, 900],
+        "parameters": {
+            "method": "PUT",
+            "url": "={{ ($('LinkedIn: iniciar upload').first().json.value || {}).uploadUrl || 'https://api.linkedin.com/rest/images/sem-upload' }}",
+            "sendHeaders": True,
+            "headerParameters": {
+                "parameters": [
+                    {"name": "Authorization", "value": "=Bearer {{ $('Roteador').first().json.token }}"},
+                ]
+            },
+            "sendBody": True,
+            "contentType": "binaryData",
+            "inputDataFieldName": "data",
+            "options": {"timeout": 120000, "response": {"response": {"fullResponse": True, "neverError": True}}},
+        },
+    },
+    code_node("Montar post com imagem", "n-li-img-montar", [1640, 900], LI_MONTAR_IMG),
+    if_bool("Imagem ok?", "n-if-img-ok", [1800, 900], "={{ $json.ok }}"),
     code_node("LinkedIn: resultado", "n-li-resultado", [1200, 700], LI_RESULTADO),
     tg_node("Enviar publicacao", "n-li-send", [1440, 700]),
     # OAuth do LinkedIn (o navegador volta aqui depois de autorizar)
@@ -749,7 +910,14 @@ connections = {
     "Roteador": link("E radar?"),
     "E radar?": link("Aviso radar", "Precisa de IA?"),
     "Precisa de IA?": link("Aviso processando", "E publicar?"),
-    "E publicar?": link("LinkedIn: publicar", "Responder"),
+    "E publicar?": link("Tem imagem?", "Responder"),
+    "Tem imagem?": link("Telegram: arquivo", "LinkedIn: publicar"),
+    "Telegram: arquivo": link("LinkedIn: iniciar upload"),
+    "LinkedIn: iniciar upload": link("Telegram: baixar imagem"),
+    "Telegram: baixar imagem": link("LinkedIn: enviar imagem"),
+    "LinkedIn: enviar imagem": link("Montar post com imagem"),
+    "Montar post com imagem": link("Imagem ok?"),
+    "Imagem ok?": link("LinkedIn: publicar", "Enviar publicacao"),
     "LinkedIn: publicar": link("LinkedIn: resultado"),
     "LinkedIn: resultado": link("Enviar publicacao"),
     "LinkedIn callback": link("LinkedIn: validar"),

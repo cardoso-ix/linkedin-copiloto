@@ -30,7 +30,7 @@
         300
       ],
       "parameters": {
-        "jsCode": "\nconst SISTEMA = \"Você escreve em nome de Eduardo Cardoso, em português do Brasil.\\n\\nQUEM É O EDUARDO (use só estes fatos, nunca invente outros):\\n- Mora em Chapecó/SC. Experiência real em suporte técnico (Help Desk) e em automação de processos com n8n, APIs e LLMs.\\n- Faz pós-graduação em IA, com foco em agentes.\\n- Projetos reais: Mentor de Gestão Industrial (multiagente com CrewAI, RAG com ChromaDB, Streamlit, demo no Hugging Face); replicador de promoções de Pokémon TCG para WhatsApp (Node.js/TypeScript, rodando 24/7 numa VPS com Coolify e painel próprio); PC Dashboard (app desktop em Tauri/Rust); conversor de unidades (React/TypeScript); este próprio copiloto de LinkedIn em n8n.\\n- Busca trabalho remoto em automação/IA, suporte técnico ou suporte a produto de IA. Nunca escreva \\\"busco vaga\\\", \\\"open to work\\\" ou similar no texto.\\n\\nVOZ:\\n- Pragmático, de colega para colega. Direto, técnico sem ser pedante, honesto sobre erros e limites.\\n- Nada de palco, motivacional ou autopromoção vazia.\\n\\nPROIBIDO:\\n- Travessão longo (—) ou meia-risca (–). Use vírgula, ponto ou parênteses.\\n- Mais de 1 emoji no texto inteiro. Emojis 🚀🔥💡👏📌👇🎯 nunca.\\n- Listas com marcadores transformando o texto em slide. Prefira parágrafos curtos.\\n- Aberturas clichê: \\\"No mundo acelerado...\\\", \\\"Você já parou para pensar...\\\", \\\"Recentemente me deparei...\\\", \\\"No cenário atual...\\\".\\n- Fechamentos pedindo engajamento: \\\"E você, o que acha? Comenta aí\\\", \\\"Compartilhe\\\", \\\"Salve este post\\\".\\n- Palavras: disruptivo, mindset, ecossistema, revolucionar, game changer, sinergia, fora da caixa, jornada.\\n- Números, clientes, resultados ou experiências que não estejam nos fatos acima ou na ideia enviada.\\n- Inventar acontecimentos: \\\"a primeira versão\\\", \\\"no teste deu errado\\\", \\\"um cliente pediu\\\", bugs, conversas ou aprendizados que a ideia não contou. Se faltar um detalhe concreto, escreva de forma geral ou deixe um marcador entre colchetes, ex.: [conte aqui o erro que aconteceu], para o Eduardo completar.\\n\";\nfunction llmBody(userContent, temperature, maxTokens) {\n  return {\n    model: $env.LLM_MODEL || 'deepseek-v4.1-flash',\n    temperature,\n    max_tokens: maxTokens,\n    response_format: { type: 'json_object' },\n    messages: [\n      { role: 'system', content: SISTEMA },\n      { role: 'user', content: userContent },\n    ],\n  };\n}\nconst LI_REDIRECT = String($env.WEBHOOK_URL || '').replace(/\\/+$/, '') + '/webhook/linkedin-callback';\nconst dataBR = (ms) => new Date(ms).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });\n\nconst P_POST = \"Escreva duas versões de post para o LinkedIn a partir da ideia abaixo.\\n\\nVersão 1 (Bastidores): narrativa curta de algo que aconteceu na prática, a dor real e o que ele aprendeu.\\nVersão 2 (Arquitetura): foco técnico, comparando o jeito frágil com o jeito robusto de resolver.\\n\\nRegras de formato para as duas:\\n- 900 a 1.500 caracteres.\\n- Primeira linha é um gancho seco, uma afirmação forte ou o problema direto.\\n- Parágrafos de 1 a 3 linhas separados por linha em branco (leitura no celular).\\n- Termina com uma constatação honesta de engenharia ou uma pergunta natural entre profissionais, sem pedir engajamento.\\n- No máximo 3 hashtags no final, relevantes (ex.: #n8n #automacao #IA).\\n\\nTambém gere um prompt de imagem em inglês técnico para o Meta AI: infográfico ou diagrama em dark mode (#0f172a), 16:9, com todos os textos da imagem em português entre aspas, sem robôs, sem vidro 3D, sem esferas brilhantes, sem textos em inglês.\\n\\nResponda SOMENTE com JSON válido neste formato:\\n{\\\"v1\\\": \\\"texto da versão 1\\\", \\\"v2\\\": \\\"texto da versão 2\\\", \\\"imagem\\\": \\\"prompt da imagem\\\"}\\n\\nIDEIA:\\n\";\nconst P_COMENT = \"Abaixo está o texto de um post do LinkedIn de outra pessoa. Escreva dois comentários que o Eduardo poderia publicar nele.\\n\\nComentário 1: acrescenta um ponto técnico ou prático que o post não disse, ligado à experiência real dele quando fizer sentido.\\nComentário 2: faz uma pergunta específica e inteligente sobre o conteúdo, que puxe conversa com o autor.\\n\\nRegras:\\n- 2 a 4 frases cada. Nada de \\\"Ótimo post!\\\", \\\"Parabéns pela reflexão\\\", \\\"Concordo totalmente\\\".\\n- Não elogie o autor de forma genérica, não se promova, não peça conexão.\\n- Escreva no mesmo idioma do post.\\n- Se o post for vago demais para comentar algo útil, diga isso no campo \\\"aviso\\\" e ainda assim sugira os comentários.\\n\\nResponda SOMENTE com JSON válido neste formato:\\n{\\\"c1\\\": \\\"comentário 1\\\", \\\"c2\\\": \\\"comentário 2\\\", \\\"aviso\\\": \\\"\\\"}\\n\\nPOST:\\n\";\nconst P_CAND = \"O Eduardo quer se candidatar à vaga abaixo. Prepare o material para ele.\\n\\n1. \\\"nota_recrutador\\\": mensagem para mandar ao recrutador ou junto do convite de conexão no LinkedIn. Máximo 280 caracteres. Cita a vaga, conecta UM fato real do perfil com a vaga, termina com algo simples como pedir para conversar. Sem bajulação, sem \\\"venho por meio desta\\\".\\n2. \\\"destaques\\\": 3 pontos reais do perfil dele que mais combinam com esta vaga (use só os fatos conhecidos).\\n3. \\\"lacunas\\\": até 2 requisitos da vaga que ele não comprova hoje, e uma frase honesta de como tratar cada um na entrevista.\\n4. \\\"palavras_chave\\\": até 6 termos da vaga que vale ter no currículo e no perfil do LinkedIn, se forem verdade.\\n\\nResponda SOMENTE com JSON válido:\\n{\\\"nota_recrutador\\\": \\\"...\\\", \\\"destaques\\\": [\\\"...\\\", \\\"...\\\", \\\"...\\\"], \\\"lacunas\\\": [\\\"...\\\"], \\\"palavras_chave\\\": [\\\"...\\\"]}\\n\\nVAGA:\\n\";\nconst AJUDA = \"Copiloto LinkedIn\\n\\n/post <ideia>  gera 2 versoes de post + prompt de imagem\\n/publicar <texto>  publica um texto seu (pede confirmacao)\\n/conectar  liga (ou renova) sua conta do LinkedIn\\n/comentar <texto do post>  sugere 2 comentarios (ou so cola o texto)\\n/vagas  roda o radar de vagas remotas agora\\n/pipeline  lista as vagas que voce marcou como Quero\\n/status  confere se esta tudo de pe\\n\\nO radar roda sozinho as 9h e as 15h e so te chama quando acha vaga com nota 70+.\\nNada vai para o LinkedIn sem voce tocar em Publicar e confirmar.\";\n\nconst input = $input.first().json;\nconst headers = input.headers || {};\nconst body = input.body || {};\n\nconst secret = $env.TG_WEBHOOK_SECRET;\nif (secret && headers['x-telegram-bot-api-secret-token'] !== secret) return [];\n\nconst sd = $getWorkflowStaticData('global');\nsd.jobs = sd.jobs || {};\nsd.pipeline = sd.pipeline || {};\n\nconst cq = body.callback_query;\nconst msg = body.message || body.edited_message || (cq && cq.message);\nif (!msg || !msg.chat) return [];\nconst chatId = String(msg.chat.id);\nif (chatId !== String($env.TELEGRAM_CHAT_ID)) return [];\n\nconst simples = (text, reply_markup) => [{ json: { chatId, route: 'simples', text, reply_markup } }];\nsd.drafts = sd.drafts || {};\n\n// \"little text format\" do LinkedIn: parenteses e afins sem escape cortam o post.\n// Hashtag (# seguido de letra) fica sem escape para continuar clicavel.\nconst little = (s) => String(s).replace(/[\\\\|{}@\\[\\]()<>*_~]/g, (m) => '\\\\' + m)\n  .replace(/#(?![\\p{L}\\p{N}_])/gu, '\\\\#');\nconst confirmar = (id, n, texto) => simples(\n  'Publicar no seu perfil, visivel para todos? Depois so apagando no app.\\n\\n' + texto,\n  { inline_keyboard: [[{ text: 'Sim, publicar', callback_data: 'c' + n + ':' + id }, { text: 'Cancelar', callback_data: 'n:' + id }]] });\nconst novoDraft = (campos) => {\n  const id = Date.now().toString(36);\n  sd.drafts[id] = Object.assign({ at: Date.now() }, campos);\n  const ids = Object.keys(sd.drafts).sort((a, b) => sd.drafts[b].at - sd.drafts[a].at);\n  for (const velho of ids.slice(30)) delete sd.drafts[velho];\n  return id;\n};\nconst llm = (kind, ack, userContent, temperature = 0.8) => [{ json: {\n  chatId, route: 'llm', kind, ack,\n  session: 'copiloto-' + chatId + '-' + kind,\n  llmBody: llmBody(userContent, temperature, 8000),\n} }];\n\nif (cq) {\n  const [tipo, id] = String(cq.data || '').split(':');\n  if (/^[pcn]\\d?$/.test(tipo)) {\n    const d = sd.drafts[id];\n    if (!d) return simples('Esse rascunho saiu da memoria. Gera de novo com /post ou manda /publicar <texto>.');\n    if (tipo === 'n') return simples('Ok, nao publiquei.');\n    const n = tipo.slice(1) || '1';\n    const texto = d['v' + n];\n    if (!texto) return [];\n    if (d.publicado) return simples('Esse ja foi publicado: ' + d.publicado);\n    if (tipo[0] === 'p') return confirmar(id, n, texto);\n    const li = sd.li;\n    if (!li || !li.token) return simples('LinkedIn ainda nao conectado. Manda /conectar e depois toca em Publicar de novo.');\n    if (li.exp < Date.now()) return simples('O acesso ao LinkedIn venceu. Manda /conectar para renovar e toca em Publicar de novo.');\n    if (d.publicando && Date.now() - d.publicando < 120000) return simples('Ja estou publicando esse, espera um pouco.');\n    d.publicando = Date.now();\n    return [{ json: {\n      chatId, route: 'publicar', draftId: id, token: li.token,\n      liBody: {\n        author: 'urn:li:person:' + li.sub,\n        commentary: little(texto),\n        visibility: 'PUBLIC',\n        distribution: { feedDistribution: 'MAIN_FEED', targetEntities: [], thirdPartyDistributionChannels: [] },\n        lifecycleState: 'PUBLISHED',\n        isReshareDisabledByAuthor: false,\n      },\n    } }];\n  }\n  const job = sd.jobs[id];\n  if (!job) return simples('Nao achei essa vaga na memoria (pode ser antiga). Abre pelo botao do link.');\n  const agora = new Date().toISOString();\n  if (tipo === 'x') {\n    sd.pipeline[id] = { status: 'ignorada', at: agora, title: job.title };\n    return simples('Ignorada: ' + job.title);\n  }\n  if (tipo === 'q') {\n    sd.pipeline[id] = { status: 'quero', at: agora, title: job.title, empresa: job.empresa, link: job.link };\n    const vaga = 'Titulo: ' + job.title + '\\nEmpresa: ' + job.empresa + '\\n\\n' + job.desc;\n    return llm('candidatura', 'Anotado no pipeline. Preparando mensagem para o recrutador...', P_CAND + vaga, 0.6);\n  }\n  return [];\n}\n\nconst text = (msg.text || msg.caption || '').trim();\nif (!text) return simples('Por enquanto eu so entendo texto. Manda /menu para ver os comandos.');\n\nconst m = text.match(/^\\/(\\w+)(?:@\\w+)?\\s*([\\s\\S]*)$/);\nconst cmd = m ? m[1].toLowerCase() : null;\nconst arg = m ? m[2].trim() : text;\n\nif (cmd === 'start' || cmd === 'menu' || cmd === 'ajuda' || cmd === 'help') return simples(AJUDA);\nif (cmd === 'status') {\n  const agora = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });\n  const vistas = Object.keys(sd.seen || {}).length;\n  const quero = Object.values(sd.pipeline).filter((p) => p.status === 'quero').length;\n  const li = sd.li;\n  const liTxt = !li ? 'nao conectado (/conectar)' : (li.exp < Date.now() ? 'vencido (/conectar)' :\n    'conectado como ' + li.nome + ', vale ate ' + dataBR(li.exp));\n  return simples('No ar.\\nModelo: ' + ($env.LLM_MODEL || '?') + '\\nHora do servidor: ' + agora +\n    '\\nLinkedIn: ' + liTxt + '\\nVagas ja analisadas: ' + vistas + '\\nNo pipeline (Quero): ' + quero);\n}\nif (cmd === 'conectar') {\n  if (!$env.LINKEDIN_CLIENT_ID) return simples('Falta configurar LINKEDIN_CLIENT_ID e LINKEDIN_CLIENT_SECRET no Coolify.');\n  const state = Date.now().toString(36) + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);\n  sd.oauth = { state, at: Date.now() };\n  const url = 'https://www.linkedin.com/oauth/v2/authorization?response_type=code' +\n    '&client_id=' + encodeURIComponent($env.LINKEDIN_CLIENT_ID) +\n    '&redirect_uri=' + encodeURIComponent(LI_REDIRECT) +\n    '&state=' + state + '&scope=' +\n    // '+' no lugar de %20: o Telegram Desktop no Windows decodifica %20 e o navegador quebra o link nos espacos\n    encodeURIComponent($env.LINKEDIN_SCOPES || \"openid profile email w_member_social\").replace(/%20/g, '+');\n  return simples('Toca no botao, entra no LinkedIn e autoriza o app. O link vale 15 minutos. ' +\n    'O acesso dura 60 dias; eu te aviso antes de vencer.',\n    { inline_keyboard: [[{ text: 'Conectar LinkedIn', url }]] });\n}\nif (cmd === 'publicar') {\n  if (!arg) return simples('Manda o texto junto: /publicar <texto do post>. Eu mostro antes e so publico se voce confirmar.');\n  if (arg.length > 3000) return simples('O LinkedIn aceita ate 3000 caracteres. Esse tem ' + arg.length + '.');\n  return confirmar(novoDraft({ v1: arg }), '1', arg);\n}\nif (cmd === 'vagas' || cmd === 'radar') {\n  return [{ json: { chatId, route: 'radar', ack: 'Buscando vagas remotas novas no Remotar e dando nota. Leva uns 30 a 60 segundos...' } }];\n}\nif (cmd === 'pipeline') {\n  const itens = Object.entries(sd.pipeline)\n    .filter(([, p]) => p.status === 'quero')\n    .sort((a, b) => (a[1].at < b[1].at ? 1 : -1))\n    .slice(0, 20);\n  if (!itens.length) return simples('Pipeline vazio. Quando o radar mandar uma vaga, toque em Quero.');\n  const linhas = itens.map(([, p], i) => (i + 1) + '. ' + p.title + ' · ' + (p.empresa || '') +\n    '\\n   marcada em ' + new Date(p.at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) + '\\n   ' + (p.link || ''));\n  return simples('Vagas marcadas como Quero:\\n\\n' + linhas.join('\\n\\n'));\n}\nif (cmd === 'post') {\n  if (!arg) return simples('Manda a ideia junto. Ex.: /post o dia em que meu agente de IA estourou o limite da API e como eu resolvi com fila');\n  return llm('post', 'Escrevendo 2 versoes do post...', P_POST + arg);\n}\nif (cmd === 'comentar') {\n  if (!arg) return simples('Cola o texto do post depois do comando, ou so cola o texto direto sem comando.');\n  return llm('comentario', 'Lendo o post e pensando nos comentarios...', P_COMENT + arg);\n}\nif (cmd) return simples('Comando desconhecido. /menu mostra o que eu sei fazer.');\nif (/linkedin\\.com|lnkd\\.in/i.test(text) && text.length < 300) {\n  return simples('Eu nao abro links do LinkedIn (para proteger sua conta). Copia o texto do post no app e cola aqui.');\n}\nif (text.length < 40) return simples('Nao entendi. Para comentar um post, cola o texto inteiro dele. /menu mostra os comandos.');\nreturn llm('comentario', 'Lendo o post e pensando nos comentarios...', P_COMENT + text);\n"
+        "jsCode": "\nconst SISTEMA = \"Você escreve em nome de Eduardo Cardoso, em português do Brasil.\\n\\nQUEM É O EDUARDO (use só estes fatos, nunca invente outros):\\n- Mora em Chapecó/SC. Experiência real em suporte técnico (Help Desk) e em automação de processos com n8n, APIs e LLMs.\\n- Faz pós-graduação em IA, com foco em agentes.\\n- Projetos reais: Mentor de Gestão Industrial (multiagente com CrewAI, RAG com ChromaDB, Streamlit, demo no Hugging Face); replicador de promoções de Pokémon TCG para WhatsApp (Node.js/TypeScript, rodando 24/7 numa VPS com Coolify e painel próprio); PC Dashboard (app desktop em Tauri/Rust); conversor de unidades (React/TypeScript); este próprio copiloto de LinkedIn em n8n.\\n- Busca trabalho remoto em automação/IA, suporte técnico ou suporte a produto de IA. Nunca escreva \\\"busco vaga\\\", \\\"open to work\\\" ou similar no texto.\\n\\nVOZ:\\n- Pragmático, de colega para colega. Direto, técnico sem ser pedante, honesto sobre erros e limites.\\n- Nada de palco, motivacional ou autopromoção vazia.\\n\\nPROIBIDO:\\n- Travessão longo (—) ou meia-risca (–). Use vírgula, ponto ou parênteses.\\n- Mais de 1 emoji no texto inteiro. Emojis 🚀🔥💡👏📌👇🎯 nunca.\\n- Listas com marcadores transformando o texto em slide. Prefira parágrafos curtos.\\n- Aberturas clichê: \\\"No mundo acelerado...\\\", \\\"Você já parou para pensar...\\\", \\\"Recentemente me deparei...\\\", \\\"No cenário atual...\\\".\\n- Fechamentos pedindo engajamento: \\\"E você, o que acha? Comenta aí\\\", \\\"Compartilhe\\\", \\\"Salve este post\\\".\\n- Palavras: disruptivo, mindset, ecossistema, revolucionar, game changer, sinergia, fora da caixa, jornada.\\n- Números, clientes, resultados ou experiências que não estejam nos fatos acima ou na ideia enviada.\\n- Inventar acontecimentos: \\\"a primeira versão\\\", \\\"no teste deu errado\\\", \\\"um cliente pediu\\\", bugs, conversas ou aprendizados que a ideia não contou. Se faltar um detalhe concreto, escreva de forma geral ou deixe um marcador entre colchetes, ex.: [conte aqui o erro que aconteceu], para o Eduardo completar.\\n\";\nfunction llmBody(userContent, temperature, maxTokens) {\n  return {\n    model: $env.LLM_MODEL || 'deepseek-v4.1-flash',\n    temperature,\n    max_tokens: maxTokens,\n    response_format: { type: 'json_object' },\n    messages: [\n      { role: 'system', content: SISTEMA },\n      { role: 'user', content: userContent },\n    ],\n  };\n}\nconst LI_REDIRECT = String($env.WEBHOOK_URL || '').replace(/\\/+$/, '') + '/webhook/linkedin-callback';\nconst dataBR = (ms) => new Date(ms).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });\n\nconst P_POST = \"Escreva duas versões de post para o LinkedIn a partir da ideia abaixo.\\n\\nVersão 1 (Bastidores): narrativa curta de algo que aconteceu na prática, a dor real e o que ele aprendeu.\\nVersão 2 (Arquitetura): foco técnico, comparando o jeito frágil com o jeito robusto de resolver.\\n\\nRegras de formato para as duas:\\n- 900 a 1.500 caracteres.\\n- Primeira linha é um gancho seco, uma afirmação forte ou o problema direto.\\n- Parágrafos de 1 a 3 linhas separados por linha em branco (leitura no celular).\\n- Termina com uma constatação honesta de engenharia ou uma pergunta natural entre profissionais, sem pedir engajamento.\\n- No máximo 3 hashtags no final, relevantes (ex.: #n8n #automacao #IA).\\n\\nTambém gere um prompt de imagem em inglês para o Gemini (serve também no Meta AI). Regras:\\n- Formato vertical 4:5 (1080x1350), que ocupa mais espaço no feed do celular.\\n- Escolha UM estilo, o que melhor prova a ideia: (a) diagrama simples de fluxo com 3 a 5 caixas ligadas por setas; (b) comparação lado a lado \\\"Antes\\\" x \\\"Depois\\\"; (c) cena realista de mesa de trabalho com notebook mostrando um fluxo de automação, luz natural, sem pessoas de rosto visível.\\n- Texto dentro da imagem: no máximo 6 palavras no total, em português, cada texto entre aspas e escrito exatamente como deve aparecer. Gerador de imagem erra texto longo.\\n- Visual limpo: fundo escuro #0f172a com destaques em azul #38bdf8 e verde #22c55e para diagramas; muito espaço vazio; fonte sans-serif grossa.\\n- Proibido: robôs, cérebros, mãos humanoides, vidro 3D, esferas brilhantes, hologramas, texto em inglês, logotipos de marcas.\\n\\nResponda SOMENTE com JSON válido neste formato:\\n{\\\"v1\\\": \\\"texto da versão 1\\\", \\\"v2\\\": \\\"texto da versão 2\\\", \\\"imagem\\\": \\\"prompt da imagem\\\"}\\n\\nIDEIA:\\n\";\nconst P_COMENT = \"Abaixo está o texto de um post do LinkedIn de outra pessoa. Escreva dois comentários que o Eduardo poderia publicar nele.\\n\\nComentário 1: acrescenta um ponto técnico ou prático que o post não disse, ligado à experiência real dele quando fizer sentido.\\nComentário 2: faz uma pergunta específica e inteligente sobre o conteúdo, que puxe conversa com o autor.\\n\\nRegras:\\n- 2 a 4 frases cada. Nada de \\\"Ótimo post!\\\", \\\"Parabéns pela reflexão\\\", \\\"Concordo totalmente\\\".\\n- Não elogie o autor de forma genérica, não se promova, não peça conexão.\\n- Escreva no mesmo idioma do post.\\n- Se o post for vago demais para comentar algo útil, diga isso no campo \\\"aviso\\\" e ainda assim sugira os comentários.\\n\\nResponda SOMENTE com JSON válido neste formato:\\n{\\\"c1\\\": \\\"comentário 1\\\", \\\"c2\\\": \\\"comentário 2\\\", \\\"aviso\\\": \\\"\\\"}\\n\\nPOST:\\n\";\nconst P_CAND = \"O Eduardo quer se candidatar à vaga abaixo. Prepare o material para ele.\\n\\n1. \\\"nota_recrutador\\\": mensagem para mandar ao recrutador ou junto do convite de conexão no LinkedIn. Máximo 280 caracteres. Cita a vaga, conecta UM fato real do perfil com a vaga, termina com algo simples como pedir para conversar. Sem bajulação, sem \\\"venho por meio desta\\\".\\n2. \\\"destaques\\\": 3 pontos reais do perfil dele que mais combinam com esta vaga (use só os fatos conhecidos).\\n3. \\\"lacunas\\\": até 2 requisitos da vaga que ele não comprova hoje, e uma frase honesta de como tratar cada um na entrevista.\\n4. \\\"palavras_chave\\\": até 6 termos da vaga que vale ter no currículo e no perfil do LinkedIn, se forem verdade.\\n\\nResponda SOMENTE com JSON válido:\\n{\\\"nota_recrutador\\\": \\\"...\\\", \\\"destaques\\\": [\\\"...\\\", \\\"...\\\", \\\"...\\\"], \\\"lacunas\\\": [\\\"...\\\"], \\\"palavras_chave\\\": [\\\"...\\\"]}\\n\\nVAGA:\\n\";\nconst AJUDA = \"Copiloto LinkedIn\\n\\n/post <ideia>  gera 2 versoes de post + prompt de imagem\\n/publicar <texto>  publica um texto seu (pede confirmacao)\\nImagem: responde a versao escolhida com a foto, ou manda a foto com /post <ideia> na legenda\\n/conectar  liga (ou renova) sua conta do LinkedIn\\n/comentar <texto do post>  sugere 2 comentarios (ou so cola o texto)\\n/vagas  roda o radar de vagas remotas agora\\n/pipeline  lista as vagas que voce marcou como Quero\\n/status  confere se esta tudo de pe\\n\\nO radar roda sozinho as 9h e as 15h e so te chama quando acha vaga com nota 70+.\\nNada vai para o LinkedIn sem voce tocar em Publicar e confirmar.\";\n\nconst input = $input.first().json;\nconst headers = input.headers || {};\nconst body = input.body || {};\n\nconst secret = $env.TG_WEBHOOK_SECRET;\nif (secret && headers['x-telegram-bot-api-secret-token'] !== secret) return [];\n\nconst sd = $getWorkflowStaticData('global');\nsd.jobs = sd.jobs || {};\nsd.pipeline = sd.pipeline || {};\n\nconst cq = body.callback_query;\nconst msg = body.message || body.edited_message || (cq && cq.message);\nif (!msg || !msg.chat) return [];\nconst chatId = String(msg.chat.id);\nif (chatId !== String($env.TELEGRAM_CHAT_ID)) return [];\n\nconst simples = (text, reply_markup) => [{ json: { chatId, route: 'simples', text, reply_markup } }];\nsd.drafts = sd.drafts || {};\n\n// \"little text format\" do LinkedIn: parenteses e afins sem escape cortam o post.\n// Hashtag (# seguido de letra) fica sem escape para continuar clicavel.\nconst little = (s) => String(s).replace(/[\\\\|{}@\\[\\]()<>*_~]/g, (m) => '\\\\' + m)\n  .replace(/#(?![\\p{L}\\p{N}_])/gu, '\\\\#');\nconst confirmar = (id, n, texto) => simples(\n  'Publicar no seu perfil, visivel para todos? Depois so apagando no app.' +\n  ((sd.drafts[id] || {}).img ? '\\nVai junto a imagem que voce mandou.' : '') + '\\n\\n' + texto,\n  { inline_keyboard: [[{ text: 'Sim, publicar', callback_data: 'c' + n + ':' + id }, { text: 'Cancelar', callback_data: 'n:' + id }]] });\nconst novoDraft = (campos) => {\n  const id = Date.now().toString(36);\n  sd.drafts[id] = Object.assign({ at: Date.now() }, campos);\n  const ids = Object.keys(sd.drafts).sort((a, b) => sd.drafts[b].at - sd.drafts[a].at);\n  for (const velho of ids.slice(30)) delete sd.drafts[velho];\n  return id;\n};\n// Botoes de um rascunho: uma linha por versao, e \"Tirar imagem\" quando tiver imagem.\nconst botoesDraft = (id) => {\n  const d = sd.drafts[id];\n  const tag = d.img ? ' com imagem' : '';\n  const kb = [[{ text: 'Publicar versao 1' + tag, callback_data: 'p1:' + id }]];\n  if (d.v2) kb.push([{ text: 'Publicar versao 2' + tag, callback_data: 'p2:' + id }]);\n  if (d.img) kb.push([{ text: 'Tirar imagem', callback_data: 'r:' + id }]);\n  return { inline_keyboard: kb };\n};\nconst llm = (kind, ack, userContent, temperature = 0.8) => [{ json: {\n  chatId, route: 'llm', kind, ack,\n  session: 'copiloto-' + chatId + '-' + kind,\n  llmBody: llmBody(userContent, temperature, 8000),\n} }];\n\nif (cq) {\n  const [tipo, id] = String(cq.data || '').split(':');\n  if (/^[pcnr]\\d?$/.test(tipo)) {\n    const d = sd.drafts[id];\n    if (!d) return simples('Esse rascunho saiu da memoria. Gera de novo com /post ou manda /publicar <texto>.');\n    if (tipo === 'n') return simples('Ok, nao publiquei.');\n    if (tipo === 'r') {\n      delete d.img;\n      return simples('Imagem removida. O post sai so com texto.', botoesDraft(id));\n    }\n    const n = tipo.slice(1) || '1';\n    const texto = d['v' + n];\n    if (!texto) return [];\n    if (d.publicado) return simples('Esse ja foi publicado: ' + d.publicado);\n    if (tipo[0] === 'p') return confirmar(id, n, texto);\n    const li = sd.li;\n    if (!li || !li.token) return simples('LinkedIn ainda nao conectado. Manda /conectar e depois toca em Publicar de novo.');\n    if (li.exp < Date.now()) return simples('O acesso ao LinkedIn venceu. Manda /conectar para renovar e toca em Publicar de novo.');\n    if (d.publicando && Date.now() - d.publicando < 120000) return simples('Ja estou publicando esse, espera um pouco.');\n    d.publicando = Date.now();\n    return [{ json: {\n      chatId, route: 'publicar', draftId: id, token: li.token, img: d.img || null,\n      liBody: {\n        author: 'urn:li:person:' + li.sub,\n        commentary: little(texto),\n        visibility: 'PUBLIC',\n        distribution: { feedDistribution: 'MAIN_FEED', targetEntities: [], thirdPartyDistributionChannels: [] },\n        lifecycleState: 'PUBLISHED',\n        isReshareDisabledByAuthor: false,\n      },\n    } }];\n  }\n  const job = sd.jobs[id];\n  if (!job) return simples('Nao achei essa vaga na memoria (pode ser antiga). Abre pelo botao do link.');\n  const agora = new Date().toISOString();\n  if (tipo === 'x') {\n    sd.pipeline[id] = { status: 'ignorada', at: agora, title: job.title };\n    return simples('Ignorada: ' + job.title);\n  }\n  if (tipo === 'q') {\n    sd.pipeline[id] = { status: 'quero', at: agora, title: job.title, empresa: job.empresa, link: job.link };\n    const vaga = 'Titulo: ' + job.title + '\\nEmpresa: ' + job.empresa + '\\n\\n' + job.desc;\n    return llm('candidatura', 'Anotado no pipeline. Preparando mensagem para o recrutador...', P_CAND + vaga, 0.6);\n  }\n  return [];\n}\n\n// Imagem: foto comprimida (maior resolucao e a ultima) ou arquivo JPG/PNG/GIF.\nconst foto = (msg.photo && msg.photo.length) ? msg.photo[msg.photo.length - 1].file_id\n  : (msg.document && /^image\\/(jpeg|png|gif)$/i.test(msg.document.mime_type || '') ? msg.document.file_id : null);\nif (msg.document && !foto) return simples('Esse tipo de arquivo eu nao uso. Imagem precisa ser JPG, PNG ou GIF.');\nif (foto) {\n  const leg = (msg.caption || '').trim();\n  const mc = leg.match(/^\\/(\\w+)(?:@\\w+)?\\s*([\\s\\S]*)$/);\n  const ccmd = mc ? mc[1].toLowerCase() : null;\n  const carg = mc ? mc[2].trim() : '';\n  if (ccmd === 'post') {\n    if (!carg) return simples('Coloca a ideia na legenda da foto: /post <ideia>.');\n    sd.imgPendente = { img: foto, at: Date.now() };\n    return llm('post', 'Escrevendo 2 versoes do post (a imagem vai junto)...', P_POST + carg);\n  }\n  if (ccmd === 'publicar') {\n    if (!carg) return simples('Coloca o texto na legenda da foto: /publicar <texto do post>.');\n    if (carg.length > 3000) return simples('O LinkedIn aceita ate 3000 caracteres. Esse tem ' + carg.length + '.');\n    return confirmar(novoDraft({ v1: carg, img: foto }), '1', carg);\n  }\n  // Foto respondendo a uma mensagem com botoes de rascunho; senao, o rascunho mais recente (ate 24h).\n  let id = null;\n  const rm = msg.reply_to_message;\n  for (const row of (rm && rm.reply_markup && rm.reply_markup.inline_keyboard) || []) {\n    for (const b of row) {\n      const mm = String(b.callback_data || '').match(/^[pcr]\\d?:(\\w+)$/);\n      if (mm && sd.drafts[mm[1]]) id = mm[1];\n    }\n  }\n  if (!id) {\n    const recentes = Object.keys(sd.drafts).filter((k) => !sd.drafts[k].publicado)\n      .sort((a, b) => sd.drafts[b].at - sd.drafts[a].at);\n    if (recentes.length && Date.now() - sd.drafts[recentes[0]].at < 24 * 3600000) id = recentes[0];\n  }\n  if (!id) return simples('Recebi a imagem, mas nao achei rascunho para ela. Manda a foto com a legenda /post <ideia> ou /publicar <texto>.');\n  const d = sd.drafts[id];\n  if (d.publicado) return simples('Esse rascunho ja foi publicado: ' + d.publicado);\n  d.img = foto;\n  const previa = String(d.v1 || '').slice(0, 140) + (String(d.v1 || '').length > 140 ? '...' : '');\n  return simples('Imagem anexada ao rascunho que comeca assim:\\n\\n' + previa +\n    '\\n\\nEscolhe a versao para publicar com a imagem.', botoesDraft(id));\n}\n\nconst text = (msg.text || msg.caption || '').trim();\nif (!text) return simples('Por enquanto eu so entendo texto. Manda /menu para ver os comandos.');\n\nconst m = text.match(/^\\/(\\w+)(?:@\\w+)?\\s*([\\s\\S]*)$/);\nconst cmd = m ? m[1].toLowerCase() : null;\nconst arg = m ? m[2].trim() : text;\n\nif (cmd === 'start' || cmd === 'menu' || cmd === 'ajuda' || cmd === 'help') return simples(AJUDA);\nif (cmd === 'status') {\n  const agora = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });\n  const vistas = Object.keys(sd.seen || {}).length;\n  const quero = Object.values(sd.pipeline).filter((p) => p.status === 'quero').length;\n  const li = sd.li;\n  const liTxt = !li ? 'nao conectado (/conectar)' : (li.exp < Date.now() ? 'vencido (/conectar)' :\n    'conectado como ' + li.nome + ', vale ate ' + dataBR(li.exp));\n  return simples('No ar.\\nModelo: ' + ($env.LLM_MODEL || '?') + '\\nHora do servidor: ' + agora +\n    '\\nLinkedIn: ' + liTxt + '\\nVagas ja analisadas: ' + vistas + '\\nNo pipeline (Quero): ' + quero);\n}\nif (cmd === 'conectar') {\n  if (!$env.LINKEDIN_CLIENT_ID) return simples('Falta configurar LINKEDIN_CLIENT_ID e LINKEDIN_CLIENT_SECRET no Coolify.');\n  const state = Date.now().toString(36) + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);\n  sd.oauth = { state, at: Date.now() };\n  const url = 'https://www.linkedin.com/oauth/v2/authorization?response_type=code' +\n    '&client_id=' + encodeURIComponent($env.LINKEDIN_CLIENT_ID) +\n    '&redirect_uri=' + encodeURIComponent(LI_REDIRECT) +\n    '&state=' + state + '&scope=' +\n    // '+' no lugar de %20: o Telegram Desktop no Windows decodifica %20 e o navegador quebra o link nos espacos\n    encodeURIComponent($env.LINKEDIN_SCOPES || \"openid profile email w_member_social\").replace(/%20/g, '+');\n  return simples('Toca no botao, entra no LinkedIn e autoriza o app. O link vale 15 minutos. ' +\n    'O acesso dura 60 dias; eu te aviso antes de vencer.',\n    { inline_keyboard: [[{ text: 'Conectar LinkedIn', url }]] });\n}\nif (cmd === 'publicar') {\n  if (!arg) return simples('Manda o texto junto: /publicar <texto do post>. Eu mostro antes e so publico se voce confirmar.');\n  if (arg.length > 3000) return simples('O LinkedIn aceita ate 3000 caracteres. Esse tem ' + arg.length + '.');\n  return confirmar(novoDraft({ v1: arg }), '1', arg);\n}\nif (cmd === 'vagas' || cmd === 'radar') {\n  return [{ json: { chatId, route: 'radar', ack: 'Buscando vagas remotas novas no Remotar e dando nota. Leva uns 30 a 60 segundos...' } }];\n}\nif (cmd === 'pipeline') {\n  const itens = Object.entries(sd.pipeline)\n    .filter(([, p]) => p.status === 'quero')\n    .sort((a, b) => (a[1].at < b[1].at ? 1 : -1))\n    .slice(0, 20);\n  if (!itens.length) return simples('Pipeline vazio. Quando o radar mandar uma vaga, toque em Quero.');\n  const linhas = itens.map(([, p], i) => (i + 1) + '. ' + p.title + ' · ' + (p.empresa || '') +\n    '\\n   marcada em ' + new Date(p.at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) + '\\n   ' + (p.link || ''));\n  return simples('Vagas marcadas como Quero:\\n\\n' + linhas.join('\\n\\n'));\n}\nif (cmd === 'post') {\n  if (!arg) return simples('Manda a ideia junto. Ex.: /post o dia em que meu agente de IA estourou o limite da API e como eu resolvi com fila');\n  return llm('post', 'Escrevendo 2 versoes do post...', P_POST + arg);\n}\nif (cmd === 'comentar') {\n  if (!arg) return simples('Cola o texto do post depois do comando, ou so cola o texto direto sem comando.');\n  return llm('comentario', 'Lendo o post e pensando nos comentarios...', P_COMENT + arg);\n}\nif (cmd) return simples('Comando desconhecido. /menu mostra o que eu sei fazer.');\nif (/linkedin\\.com|lnkd\\.in/i.test(text) && text.length < 300) {\n  return simples('Eu nao abro links do LinkedIn (para proteger sua conta). Copia o texto do post no app e cola aqui.');\n}\nif (text.length < 40) return simples('Nao entendi. Para comentar um post, cola o texto inteiro dele. /menu mostra os comandos.');\nreturn llm('comentario', 'Lendo o post e pensando nos comentarios...', P_COMENT + text);\n"
       }
     },
     {
@@ -149,7 +149,7 @@
         340
       ],
       "parameters": {
-        "jsCode": "\nconst ctx = $('Roteador').first().json;\nconst resp = $input.first().json;\nconst chatId = ctx.chatId;\n\nfunction limpa(s) {\n  return String(s || '').replace(/\\s*[—–]\\s*/g, ', ').replace(/, ,/g, ',').trim();\n}\nconst lista = (arr) => (Array.isArray(arr) ? arr : [arr]).filter(Boolean).map((x) => '• ' + limpa(x)).join('\\n');\n\nlet raw = '';\ntry { raw = resp.choices[0].message.content || ''; } catch (e) { raw = ''; }\nif (!raw) {\n  const erro = resp.error ? (resp.error.message || JSON.stringify(resp.error)) : 'resposta vazia';\n  return [{ json: { chatId, text: 'A IA nao respondeu: ' + erro } }];\n}\nconst limpo = raw.replace(/^```(?:json)?\\s*/i, '').replace(/```\\s*$/, '');\n// JSON quebrado ou cortado: recupera cada campo de texto pelo nome, mesmo sem aspas de fechamento.\nfunction campo(nome) {\n  const m = limpo.match(new RegExp('\"' + nome + '\"\\\\s*:\\\\s*\"((?:[^\"\\\\\\\\]|\\\\\\\\.)*)'));\n  if (!m) return null;\n  try { return JSON.parse('\"' + m[1].replace(/\\\\$/, '') + '\"'); }\n  catch (e) { return m[1].replace(/\\\\n/g, '\\n').replace(/\\\\\"/g, '\"').replace(/\\\\\\\\/g, '\\\\'); }\n}\nfunction campoLista(nome) {\n  const m = limpo.match(new RegExp('\"' + nome + '\"\\\\s*:\\\\s*\\\\[([\\\\s\\\\S]*?)(\\\\]|$)'));\n  if (!m) return [];\n  return (m[1].match(/\"((?:[^\"\\\\]|\\\\.)*)\"/g) || []).map((s) => { try { return JSON.parse(s); } catch (e) { return s; } });\n}\nlet data, cortado = false;\ntry {\n  data = JSON.parse(limpo);\n} catch (e) {\n  cortado = true;\n  data = { v1: campo('v1'), v2: campo('v2'), imagem: campo('imagem'), c1: campo('c1'), c2: campo('c2'), aviso: campo('aviso'),\n    nota_recrutador: campo('nota_recrutador'), destaques: campoLista(\"destaques\"), lacunas: campoLista(\"lacunas\"), palavras_chave: campoLista(\"palavras_chave\") };\n  const algo = ctx.kind === 'post' ? data.v1 : (ctx.kind === 'candidatura' ? data.nota_recrutador : data.c1);\n  if (!algo) return [{ json: { chatId, text: 'A IA respondeu fora do formato. Tenta de novo em instantes.' } }];\n}\n\nconst out = [];\nconst add = (text, reply_markup) => out.push({ json: { chatId, text, reply_markup } });\nif (ctx.kind === 'post') {\n  const v1 = limpa(data.v1), v2 = limpa(data.v2);\n  if (cortado) add('A resposta da IA veio cortada; recuperei o que deu. Confere o final do texto antes de publicar.');\n  const sd = $getWorkflowStaticData('global');\n  sd.drafts = sd.drafts || {};\n  const id = Date.now().toString(36);\n  sd.drafts[id] = { at: Date.now(), v1, v2 };\n  const ids = Object.keys(sd.drafts).sort((a, b) => sd.drafts[b].at - sd.drafts[a].at);\n  for (const velho of ids.slice(30)) delete sd.drafts[velho];\n  const botao = (n) => ({ inline_keyboard: [[{ text: 'Publicar versao ' + n, callback_data: 'p' + n + ':' + id }]] });\n  add('VERSAO 1 · Bastidores (' + v1.length + ' caracteres)\\n\\n' + v1, botao(1));\n  if (v2) add('VERSAO 2 · Arquitetura (' + v2.length + ' caracteres)\\n\\n' + v2, botao(2));\n  add('Quer ajustar antes? Copia, edita e manda /publicar <texto editado>. Se tiver [colchetes], complete antes de publicar.');\n  if (data.imagem) add('Prompt de imagem (Meta AI):\\n\\n' + String(data.imagem).trim());\n} else if (ctx.kind === 'candidatura') {\n  add('MENSAGEM PARA O RECRUTADOR\\n\\n' + limpa(data.nota_recrutador));\n  add('O QUE DESTACAR\\n' + lista(data.destaques) +\n      '\\n\\nLACUNAS E COMO TRATAR\\n' + lista(data.lacunas) +\n      '\\n\\nPALAVRAS-CHAVE (so se forem verdade)\\n' + (data.palavras_chave || []).join(', '));\n} else {\n  if (data.aviso) add('Aviso: ' + limpa(data.aviso));\n  add('COMENTARIO 1\\n\\n' + limpa(data.c1));\n  add('COMENTARIO 2\\n\\n' + limpa(data.c2));\n}\nreturn out;\n"
+        "jsCode": "\nconst ctx = $('Roteador').first().json;\nconst resp = $input.first().json;\nconst chatId = ctx.chatId;\n\nfunction limpa(s) {\n  return String(s || '').replace(/\\s*[—–]\\s*/g, ', ').replace(/, ,/g, ',').trim();\n}\nconst lista = (arr) => (Array.isArray(arr) ? arr : [arr]).filter(Boolean).map((x) => '• ' + limpa(x)).join('\\n');\n\nlet raw = '';\ntry { raw = resp.choices[0].message.content || ''; } catch (e) { raw = ''; }\nif (!raw) {\n  const erro = resp.error ? (resp.error.message || JSON.stringify(resp.error)) : 'resposta vazia';\n  return [{ json: { chatId, text: 'A IA nao respondeu: ' + erro } }];\n}\nconst limpo = raw.replace(/^```(?:json)?\\s*/i, '').replace(/```\\s*$/, '');\n// JSON quebrado ou cortado: recupera cada campo de texto pelo nome, mesmo sem aspas de fechamento.\nfunction campo(nome) {\n  const m = limpo.match(new RegExp('\"' + nome + '\"\\\\s*:\\\\s*\"((?:[^\"\\\\\\\\]|\\\\\\\\.)*)'));\n  if (!m) return null;\n  try { return JSON.parse('\"' + m[1].replace(/\\\\$/, '') + '\"'); }\n  catch (e) { return m[1].replace(/\\\\n/g, '\\n').replace(/\\\\\"/g, '\"').replace(/\\\\\\\\/g, '\\\\'); }\n}\nfunction campoLista(nome) {\n  const m = limpo.match(new RegExp('\"' + nome + '\"\\\\s*:\\\\s*\\\\[([\\\\s\\\\S]*?)(\\\\]|$)'));\n  if (!m) return [];\n  return (m[1].match(/\"((?:[^\"\\\\]|\\\\.)*)\"/g) || []).map((s) => { try { return JSON.parse(s); } catch (e) { return s; } });\n}\nlet data, cortado = false;\ntry {\n  data = JSON.parse(limpo);\n} catch (e) {\n  cortado = true;\n  data = { v1: campo('v1'), v2: campo('v2'), imagem: campo('imagem'), c1: campo('c1'), c2: campo('c2'), aviso: campo('aviso'),\n    nota_recrutador: campo('nota_recrutador'), destaques: campoLista(\"destaques\"), lacunas: campoLista(\"lacunas\"), palavras_chave: campoLista(\"palavras_chave\") };\n  const algo = ctx.kind === 'post' ? data.v1 : (ctx.kind === 'candidatura' ? data.nota_recrutador : data.c1);\n  if (!algo) return [{ json: { chatId, text: 'A IA respondeu fora do formato. Tenta de novo em instantes.' } }];\n}\n\nconst out = [];\nconst add = (text, reply_markup) => out.push({ json: { chatId, text, reply_markup } });\nif (ctx.kind === 'post') {\n  const v1 = limpa(data.v1), v2 = limpa(data.v2);\n  if (cortado) add('A resposta da IA veio cortada; recuperei o que deu. Confere o final do texto antes de publicar.');\n  const sd = $getWorkflowStaticData('global');\n  sd.drafts = sd.drafts || {};\n  const id = Date.now().toString(36);\n  sd.drafts[id] = { at: Date.now(), v1, v2 };\n  const pend = sd.imgPendente;\n  if (pend && Date.now() - pend.at < 15 * 60000) sd.drafts[id].img = pend.img;\n  delete sd.imgPendente;\n  const comImg = !!sd.drafts[id].img;\n  const ids = Object.keys(sd.drafts).sort((a, b) => sd.drafts[b].at - sd.drafts[a].at);\n  for (const velho of ids.slice(30)) delete sd.drafts[velho];\n  const botao = (n) => ({ inline_keyboard: [[{ text: 'Publicar versao ' + n + (comImg ? ' com imagem' : ''), callback_data: 'p' + n + ':' + id }]] });\n  add('VERSAO 1 · Bastidores (' + v1.length + ' caracteres)\\n\\n' + v1, botao(1));\n  if (v2) add('VERSAO 2 · Arquitetura (' + v2.length + ' caracteres)\\n\\n' + v2, botao(2));\n  add('Quer ajustar antes? Copia, edita e manda /publicar <texto editado>. Se tiver [colchetes], complete antes de publicar.');\n  if (comImg) add('A imagem que voce mandou vai junto com a versao que voce publicar.');\n  else if (data.imagem) add('Prompt de imagem (cola no Gemini ou no Meta AI):\\n\\n' + String(data.imagem).trim() +\n    '\\n\\nPara publicar com imagem: gera a imagem, depois responde a versao escolhida mandando a foto.');\n} else if (ctx.kind === 'candidatura') {\n  add('MENSAGEM PARA O RECRUTADOR\\n\\n' + limpa(data.nota_recrutador));\n  add('O QUE DESTACAR\\n' + lista(data.destaques) +\n      '\\n\\nLACUNAS E COMO TRATAR\\n' + lista(data.lacunas) +\n      '\\n\\nPALAVRAS-CHAVE (so se forem verdade)\\n' + (data.palavras_chave || []).join(', '));\n} else {\n  if (data.aviso) add('Aviso: ' + limpa(data.aviso));\n  add('COMENTARIO 1\\n\\n' + limpa(data.c1));\n  add('COMENTARIO 2\\n\\n' + limpa(data.c2));\n}\nreturn out;\n"
       }
     },
     {
@@ -491,6 +491,180 @@
       }
     },
     {
+      "id": "n-if-img",
+      "name": "Tem imagem?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        840,
+        820
+      ],
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ !!$json.img }}",
+              "value2": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "n-tg-getfile",
+      "name": "Telegram: arquivo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1000,
+        900
+      ],
+      "parameters": {
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/getFile?file_id={{ encodeURIComponent($json.img) }}",
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "n-li-img-init",
+      "name": "LinkedIn: iniciar upload",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1160,
+        900
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.linkedin.com/rest/images?action=initializeUpload",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Roteador').first().json.token }}"
+            },
+            {
+              "name": "LinkedIn-Version",
+              "value": "={{ $env.LINKEDIN_VERSION || '202610' }}"
+            },
+            {
+              "name": "X-Restli-Protocol-Version",
+              "value": "2.0.0"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ initializeUploadRequest: { owner: $('Roteador').first().json.liBody.author } }) }}",
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "n-tg-download",
+      "name": "Telegram: baixar imagem",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1320,
+        900
+      ],
+      "parameters": {
+        "url": "=https://api.telegram.org/file/bot{{ $env.TELEGRAM_BOT_TOKEN }}/{{ ($('Telegram: arquivo').first().json.result || {}).file_path || 'sem-arquivo' }}",
+        "options": {
+          "timeout": 60000,
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "file",
+              "outputPropertyName": "data"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "n-li-img-put",
+      "name": "LinkedIn: enviar imagem",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1480,
+        900
+      ],
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ ($('LinkedIn: iniciar upload').first().json.value || {}).uploadUrl || 'https://api.linkedin.com/rest/images/sem-upload' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Roteador').first().json.token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {
+          "timeout": 120000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "n-li-img-montar",
+      "name": "Montar post com imagem",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1640,
+        900
+      ],
+      "parameters": {
+        "jsCode": "\n// Depois de baixar a foto do Telegram e enviar ao LinkedIn: confere cada etapa e monta o post com a imagem.\nconst ctx = $('Roteador').first().json;\nconst sd = $getWorkflowStaticData('global');\nconst d = (sd.drafts || {})[ctx.draftId] || {};\nconst arq = $('Telegram: arquivo').first().json;\nconst init = $('LinkedIn: iniciar upload').first().json;\nconst put = $input.first().json;\nconst falha = (motivo) => {\n  delete d.publicando;\n  return [{ json: { ok: false, chatId: ctx.chatId, text: 'Nao publiquei: ' + motivo } }];\n};\nif (!arq.ok || !arq.result || !arq.result.file_path) {\n  return falha('nao consegui pegar a imagem no Telegram (' + (arq.description || 'sem detalhe') +\n    '). O limite e 20 MB. Manda a foto de novo respondendo a versao.');\n}\nconst urn = init.value && init.value.image;\nif (!urn) return falha('o LinkedIn recusou o upload da imagem (' + String(init.message || JSON.stringify(init)).slice(0, 300) + ').');\nconst st = Number(put.statusCode || 0);\nif (st < 200 || st >= 300) return falha('o envio da imagem para o LinkedIn falhou (HTTP ' + st + ').');\nconst liBody = Object.assign({}, ctx.liBody, { content: { media: { id: urn } } });\nreturn [{ json: { ok: true, chatId: ctx.chatId, token: ctx.token, liBody } }];\n"
+      }
+    },
+    {
+      "id": "n-if-img-ok",
+      "name": "Imagem ok?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1800,
+        900
+      ],
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.ok }}",
+              "value2": true
+            }
+          ]
+        }
+      }
+    },
+    {
       "id": "n-li-resultado",
       "name": "LinkedIn: resultado",
       "type": "n8n-nodes-base.code",
@@ -780,7 +954,7 @@
       "main": [
         [
           {
-            "node": "LinkedIn: publicar",
+            "node": "Tem imagem?",
             "type": "main",
             "index": 0
           }
@@ -788,6 +962,97 @@
         [
           {
             "node": "Responder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tem imagem?": {
+      "main": [
+        [
+          {
+            "node": "Telegram: arquivo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "LinkedIn: publicar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram: arquivo": {
+      "main": [
+        [
+          {
+            "node": "LinkedIn: iniciar upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LinkedIn: iniciar upload": {
+      "main": [
+        [
+          {
+            "node": "Telegram: baixar imagem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram: baixar imagem": {
+      "main": [
+        [
+          {
+            "node": "LinkedIn: enviar imagem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LinkedIn: enviar imagem": {
+      "main": [
+        [
+          {
+            "node": "Montar post com imagem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Montar post com imagem": {
+      "main": [
+        [
+          {
+            "node": "Imagem ok?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Imagem ok?": {
+      "main": [
+        [
+          {
+            "node": "LinkedIn: publicar",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Enviar publicacao",
             "type": "main",
             "index": 0
           }
